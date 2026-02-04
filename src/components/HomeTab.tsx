@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, TrendingUp } from 'lucide-react';
-import SlideToStart from './SlideToStart';
+import SlideToStart, { SlideToEnd } from './SlideToStart';
 import CountdownTimer from './CountdownTimer';
 import PermissionModal from './PermissionModal';
 import { useTracker } from '@/hooks/useTracker';
@@ -14,7 +14,8 @@ const HomeTab = ({ userName }: HomeTabProps) => {
   const { 
     isActive, 
     isLoading,
-    startDay, 
+    startDay,
+    endDay,
     getTimeUntilMidnight, 
     getCurrentDistance,
     permissionStatus,
@@ -143,12 +144,23 @@ const HomeTab = ({ userName }: HomeTabProps) => {
         )}
       </motion.div>
 
-      {/* Today's Stats (when active) */}
+      {/* End Day Slider (when active) */}
       {isActive && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
+        >
+          <SlideToEnd onComplete={endDay} />
+        </motion.div>
+      )}
+
+      {/* Today's Stats (when active) */}
+      {isActive && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
           className="glass-card p-4"
         >
           <p className="text-xs text-muted-foreground text-center">

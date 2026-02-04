@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
+import { LatLngBoundsExpression } from 'leaflet';
 import { Coordinate } from '@/lib/storage';
 import 'leaflet/dist/leaflet.css';
 
@@ -13,7 +14,7 @@ const FitBounds = ({ coordinates }: { coordinates: Coordinate[] }) => {
 
   useEffect(() => {
     if (coordinates.length > 0) {
-      const bounds = coordinates.map(c => [c.lat, c.lng] as [number, number]);
+      const bounds: LatLngBoundsExpression = coordinates.map(c => [c.lat, c.lng] as [number, number]);
       map.fitBounds(bounds, { padding: [50, 50] });
     }
   }, [coordinates, map]);
@@ -21,7 +22,37 @@ const FitBounds = ({ coordinates }: { coordinates: Coordinate[] }) => {
   return null;
 };
 
+const MapContent = ({ coordinates }: { coordinates: Coordinate[] }) => {
+  const positions = coordinates.map(c => [c.lat, c.lng] as [number, number]);
+  
+  return (
+    <>
+      <TileLayer
+        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+      />
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color: 'hsl(174, 72%, 56%)',
+          weight: 4,
+          opacity: 0.9,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }}
+      />
+      <FitBounds coordinates={coordinates} />
+    </>
+  );
+};
+
 const RouteMap = ({ coordinates, className = '' }: RouteMapProps) => {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   if (coordinates.length === 0) {
     return (
       <div className={`flex items-center justify-center bg-secondary/30 rounded-2xl ${className}`}>
@@ -30,8 +61,15 @@ const RouteMap = ({ coordinates, className = '' }: RouteMapProps) => {
     );
   }
 
+  if (!isClient) {
+    return (
+      <div className={`flex items-center justify-center bg-secondary/30 rounded-2xl ${className}`}>
+        <p className="text-muted-foreground text-sm">Loading map...</p>
+      </div>
+    );
+  }
+
   const center = coordinates[Math.floor(coordinates.length / 2)];
-  const positions = coordinates.map(c => [c.lat, c.lng] as [number, number]);
 
   return (
     <div className={`map-container ${className}`}>
@@ -41,21 +79,7 @@ const RouteMap = ({ coordinates, className = '' }: RouteMapProps) => {
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        />
-        <Polyline
-          positions={positions}
-          pathOptions={{
-            color: 'hsl(174, 72%, 56%)',
-            weight: 4,
-            opacity: 0.9,
-            lineCap: 'round',
-            lineJoin: 'round',
-          }}
-        />
-        <FitBounds coordinates={coordinates} />
+        <MapContent coordinates={coordinates} />
       </MapContainer>
     </div>
   );

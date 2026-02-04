@@ -1,13 +1,16 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
-import { ChevronRight, Check } from 'lucide-react';
+import { ChevronRight, Check, Square } from 'lucide-react';
 
-interface SlideToStartProps {
+interface SlideActionProps {
   onComplete: () => void;
   isCompleted: boolean;
+  label: string;
+  completedLabel: string;
+  variant?: 'start' | 'end';
 }
 
-const SlideToStart = ({ onComplete, isCompleted }: SlideToStartProps) => {
+const SlideAction = ({ onComplete, isCompleted, label, completedLabel, variant = 'start' }: SlideActionProps) => {
   const constraintsRef = useRef<HTMLDivElement>(null);
   const [trackWidth, setTrackWidth] = useState(0);
   const x = useMotionValue(0);
@@ -36,21 +39,26 @@ const SlideToStart = ({ onComplete, isCompleted }: SlideToStartProps) => {
     }
   };
 
+  const isEnd = variant === 'end';
+  const bgGradient = isEnd 
+    ? 'linear-gradient(90deg, hsl(0 72% 56% / 0.2), hsl(0 72% 56% / 0.3))'
+    : 'linear-gradient(90deg, hsl(174 72% 56% / 0.2), hsl(174 72% 56% / 0.3))';
+
   if (isCompleted) {
     return (
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="slider-track flex items-center justify-center bg-primary/20"
+        className={`slider-track flex items-center justify-center ${isEnd ? 'bg-destructive/20' : 'bg-primary/20'}`}
       >
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 300, delay: 0.1 }}
-          className="flex items-center gap-2 text-primary font-medium"
+          className={`flex items-center gap-2 ${isEnd ? 'text-destructive' : 'text-primary'} font-medium`}
         >
           <Check size={20} />
-          Day Started!
+          {completedLabel}
         </motion.div>
       </motion.div>
     );
@@ -62,7 +70,7 @@ const SlideToStart = ({ onComplete, isCompleted }: SlideToStartProps) => {
       <motion.div
         className="absolute inset-0 rounded-full"
         style={{
-          background: 'linear-gradient(90deg, hsl(174 72% 56% / 0.2), hsl(174 72% 56% / 0.3))',
+          background: bgGradient,
           opacity: backgroundOpacity,
         }}
       />
@@ -73,13 +81,13 @@ const SlideToStart = ({ onComplete, isCompleted }: SlideToStartProps) => {
         style={{ opacity: textOpacity }}
       >
         <span className="text-muted-foreground font-medium ml-12">
-          Slide to Start Your Day
+          {label}
         </span>
       </motion.div>
 
       {/* Thumb */}
       <motion.div
-        className="slider-thumb z-10"
+        className={`slider-thumb z-10 ${isEnd ? 'bg-destructive' : ''}`}
         drag="x"
         dragConstraints={{ left: 0, right: maxX }}
         dragElastic={0}
@@ -88,13 +96,17 @@ const SlideToStart = ({ onComplete, isCompleted }: SlideToStartProps) => {
         whileDrag={{ scale: 1.05 }}
       >
         <motion.div style={{ opacity: useTransform(checkOpacity, v => 1 - v) }}>
-          <ChevronRight size={24} className="text-primary-foreground" />
+          {isEnd ? (
+            <Square size={20} className="text-destructive-foreground" />
+          ) : (
+            <ChevronRight size={24} className="text-primary-foreground" />
+          )}
         </motion.div>
         <motion.div 
           className="absolute"
           style={{ opacity: checkOpacity }}
         >
-          <Check size={24} className="text-primary-foreground" />
+          <Check size={24} className={isEnd ? 'text-destructive-foreground' : 'text-primary-foreground'} />
         </motion.div>
       </motion.div>
 
@@ -119,5 +131,35 @@ const SlideToStart = ({ onComplete, isCompleted }: SlideToStartProps) => {
     </div>
   );
 };
+
+// Wrapper components for backwards compatibility
+interface SlideToStartProps {
+  onComplete: () => void;
+  isCompleted: boolean;
+}
+
+const SlideToStart = ({ onComplete, isCompleted }: SlideToStartProps) => (
+  <SlideAction
+    onComplete={onComplete}
+    isCompleted={isCompleted}
+    label="Slide to Start Your Day"
+    completedLabel="Day Started!"
+    variant="start"
+  />
+);
+
+interface SlideToEndProps {
+  onComplete: () => void;
+}
+
+export const SlideToEnd = ({ onComplete }: SlideToEndProps) => (
+  <SlideAction
+    onComplete={onComplete}
+    isCompleted={false}
+    label="Slide to End Your Day"
+    completedLabel="Day Ended!"
+    variant="end"
+  />
+);
 
 export default SlideToStart;

@@ -21,9 +21,25 @@ const SlideAction = ({ onComplete, isCompleted, label, completedLabel, variant =
   const threshold = maxX * 0.8;
 
   useEffect(() => {
-    if (constraintsRef.current) {
-      setTrackWidth(constraintsRef.current.offsetWidth);
-    }
+    const updateWidth = () => {
+      if (constraintsRef.current) {
+        setTrackWidth(constraintsRef.current.offsetWidth);
+      }
+    };
+    
+    // Initial measurement
+    updateWidth();
+    
+    // Re-measure after a short delay to ensure layout is complete
+    const timer = setTimeout(updateWidth, 100);
+    
+    // Also listen for resize events
+    window.addEventListener('resize', updateWidth);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateWidth);
+    };
   }, []);
 
   const backgroundOpacity = useTransform(x, [0, maxX], [0, 1]);

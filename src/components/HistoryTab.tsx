@@ -1,16 +1,48 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, ChevronRight, ArrowLeft, Clock, Route } from 'lucide-react';
+import { Calendar, MapPin, ChevronRight, ArrowLeft, Clock, Route, Search, X } from 'lucide-react';
+import { format } from 'date-fns';
 import { DayRecord, getHistory } from '@/lib/storage';
 import RouteMap from './RouteMap';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 const HistoryTab = () => {
   const [history, setHistory] = useState<DayRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<DayRecord | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   useEffect(() => {
     setHistory(getHistory());
   }, []);
+
+  // Get dates that have records for highlighting in the calendar
+  const recordDates = useMemo(() => {
+    return history.map((r) => new Date(r.date + 'T00:00:00'));
+  }, [history]);
+
+  // Filter history by selected date
+  const filteredHistory = useMemo(() => {
+    if (!selectedDate) return history;
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    return history.filter((r) => r.date === dateStr);
+  }, [history, selectedDate]);
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+    setCalendarOpen(false);
+
+    // If a date is selected and there's exactly one record, open it directly
+    if (date) {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const matches = history.filter((r) => r.date === dateStr);
+      if (matches.length === 1) {
+        setSelectedRecord(matches[0]);
+      }
+    }
+  };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00');
@@ -46,12 +78,66 @@ const HistoryTab = () => {
         exit={{ opacity: 0 }}
         className="space-y-4"
       >
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-bold text-foreground mb-1">History</h1>
-          <p className="text-muted-foreground text-sm">Your movement records</p>
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-end justify-between"
+        >
+          <div>
+            <h1 className="text-2xl font-bold text-foreground mb-1">History</h1>
+            <p className="text-muted-foreground text-sm">Your movement records</p>
+          </div>
+
+          {/* Date picker */}
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <button className="p-2.5 rounded-xl bg-secondary/50 border border-border/50 hover:bg-secondary transition-colors">
+                <Search size={18} className="text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <CalendarPicker
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                modifiers={{ hasRecord: recordDates }}
+                modifiersClassNames={{ hasRecord: 'bg-primary/20 font-bold text-primary' }}
+                disabled={(date) => date > new Date()}
+                className={cn('p-3 pointer-events-auto')}
+              />
+            </PopoverContent>
+          </Popover>
         </motion.div>
 
-        {history.length === 0 ? (
+        {/* Active filter chip */}
+        {selectedDate && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-center gap-2"
+          >
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+              <Calendar size={14} className="text-primary" />
+              <span className="text-sm text-primary font-medium">
+                {format(selectedDate, 'MMM d, yyyy')}
+              </span>
+              <button
+                onClick={() => setSelectedDate(undefined)}
+                className="p-0.5 rounded-full hover:bg-primary/20 transition-colors"
+              >
+                <X size={14} className="text-primary" />
+              </button>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {filteredHistory.length} record{filteredHistory.length !== 1 ? 's' : ''}
+            </span>
+          </motion.div>
+        )}
+
+        {/* Records list */}
+        {filteredHistory.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -60,14 +146,18 @@ const HistoryTab = () => {
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
               <Calendar size={28} className="text-primary/50" />
             </div>
-            <p className="text-foreground font-medium mb-1">No records yet</p>
+            <p className="text-foreground font-medium mb-1">
+              {selectedDate ? 'No records for this date' : 'No records yet'}
+            </p>
             <p className="text-sm text-muted-foreground">
-              Start tracking to create your first record
+              {selectedDate
+                ? 'Try selecting a different date'
+                : 'Start tracking to create your first record'}
             </p>
           </motion.div>
         ) : (
           <div className="space-y-3">
-            {history.map((record, index) => (
+            {filteredHistory.map((record, index) => (
               <motion.button
                 key={record.id}
                 initial={{ opacity: 0, y: 10 }}
